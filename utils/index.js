@@ -4,16 +4,44 @@ const StreamZip = require('node-stream-zip');
 const path = require('path');
 const fs = require('fs').promises;
 
+//验证.zip文件是否需要解压缩密码
+async function needsPassword(filePath) {
+    return new Promise((resolve, reject) => {
+        const zip = new StreamZip({
+            file: filePath,
+            storeEntries: true // 内存中缓存.zip文件的条目信息
+        });
+
+        zip.on('ready', () => {
+            let requiresPassword = false;
+            for (const entry of Object.values(zip.entries())) {
+                if (entry.encrypted) {
+                    requiresPassword = true;
+                    break;
+                }
+            }
+            zip.close();
+            resolve(requiresPassword);
+        });
+
+        zip.on('error', (err) => {
+            zip.close();
+            reject(err);
+        });
+    });
+}
+
+
 // 解压缩函数
-async function unzipFile(filePath, outputPath, password) {
+async function unzipFile(filePath, outputPath, password = null) {
     return new Promise((resolve, reject) => {
         const zip = new StreamZip({
             file: filePath,
             storeEntries: true
         });
 
-        // 设置密码
         zip.on('ready', () => {
+            // 仅在提供了密码时设置密码
             if (password) {
                 zip.password = password;
             }
@@ -49,6 +77,7 @@ async function unzipFile(filePath, outputPath, password) {
 //     .catch(err => console.error(`解压文件时出错: ${err}`));
 
 module.exports = {
-    unzipFile
+    unzipFile,
+    needsPassword
 }
 

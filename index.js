@@ -2,28 +2,31 @@ const path = require('path');
 const fs = require('fs').promises;
 const chokidar = require('chokidar');
 const config = require('./config');
-const { unzipFile } = require('./utils');
+const { needsPassword, unzipFile } = require('./utils');
 const directoryToWatch = path.resolve(__dirname, config.directoryToWatch);
 const outputPath = path.resolve(__dirname, config.outputPath);
-const readline = require('readline')
+// const readline = require('readline')
+const colors = require('colors');
+const { askForPassword } = require('./inquirer-methods');
 
 
 
 
-// 创建readline接口实例，异步函数
-function askQuestion(query) {
-    return new Promise((resolve) => {
-    const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-    });
 
-    rl.question(query, (answer) => {
-    rl.close(); // 用户输入后关闭readline接口
-    resolve(answer); // 将用户输入的值通过resolve传递出去，完成Promise
-    });
-    });
-}
+// // 创建readline接口实例，异步函数
+// function askQuestion(query) {
+//     return new Promise((resolve) => {
+//     const rl = readline.createInterface({
+//     input: process.stdin,
+//     output: process.stdout
+//     });
+
+//     rl.question(query, (answer) => {
+//     rl.close(); // 用户输入后关闭readline接口
+//     resolve(answer); // 将用户输入的值通过resolve传递出去，完成Promise
+//     });
+//     });
+// }
 
 // 初始化监视器，只关注 .zip 文件的变化
 const watcher = chokidar.watch(directoryToWatch, {
@@ -79,9 +82,16 @@ watcher.on('add', async filePath => {
     
             let zipFile = await getLastModifiedFile(addFiles);
             clearTimeout(timerAdd);
-            unzipPassword = await askQuestion('请输入加压密码：');
-            console.log(`输入解压缩密码为: ${unzipPassword}`);
-    
+
+            if (await needsPassword(zipFile)) {
+                console.log(`需要解压缩密码`.yellow.bold);
+            } else {
+                console.log(`不需要解压缩密码`.green.bold);
+            }
+
+            const unzipPassword = await askForPassword();
+            // unzipPassword = await askQuestion('请输入解压密码：');
+            // console.log(`输入解压缩密码为: ${unzipPassword}`);
             // await unzipFile(zipFile ,outputPath,unzipPassword);
         } catch (error) {
             let errorFileIndex = addFiles.indexOf(error.path);
