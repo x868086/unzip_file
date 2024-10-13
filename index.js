@@ -7,7 +7,7 @@ const directoryToWatch = path.resolve(__dirname, config.directoryToWatch);
 const outputPath = path.resolve(__dirname, config.outputPath);
 // const readline = require('readline')
 const colors = require('colors');
-const { askForPassword } = require('./inquirer-methods');
+const { askForPassword,showLoadingFiles,confirmFile } = require('./inquirer-methods');
 
 
 
@@ -48,16 +48,14 @@ async function getLastModifiedFile(addFiles) {
 
     // addFiles.sort((a, b) => fs.statSync(b).birthtime.getTime() - fs.statSync(a).birthtime.getTime());
     // console.log(`最后创建的文件是: ${addFiles[0]}`);
-    // return addFiles[0];
-    if (addFiles.length > 100) {
-        console.log(`跟踪监控的.zip文件数量已超过100个，继续增加会影响程序响应时间，请删除一些.zip文件。`);
-    }    
+    // return addFiles[0];  
     const stats = await Promise.all(addFiles.map(file => fs.stat(file)));
     addFiles.sort((a, b) => {
         const aStat = stats[addFiles.indexOf(a)];
         const bStat = stats[addFiles.indexOf(b)];
         return bStat.birthtime.getTime() - aStat.birthtime.getTime();
     });
+    addFiles.splice(3);
     console.log(`最后新增的文件是: ${addFiles[0]}`);
     return addFiles[0];
 }
@@ -82,6 +80,15 @@ watcher.on('add', async filePath => {
     
             let zipFile = await getLastModifiedFile(addFiles);
             clearTimeout(timerAdd);
+            let confirmed = await confirmFile(zipFile);
+            if (confirmed) {
+                // 用户确认解压文件
+            } else {
+                // 用户取消解压文件,加载当前跟踪的3个文件列表
+                console.log(`近跟踪监控近3个文件`);
+                let fileChoice = await showLoadingFiles(addFiles);
+                console.log(`用户选择了: ${fileChoice}`);
+            }
 
             if (await needsPassword(zipFile)) {
                 console.log(`需要解压缩密码`.yellow.bold);
@@ -90,9 +97,7 @@ watcher.on('add', async filePath => {
             }
 
             const unzipPassword = await askForPassword();
-            // unzipPassword = await askQuestion('请输入解压密码：');
-            // console.log(`输入解压缩密码为: ${unzipPassword}`);
-            // await unzipFile(zipFile ,outputPath,unzipPassword);
+
         } catch (error) {
             let errorFileIndex = addFiles.indexOf(error.path);
             if (errorFileIndex > -1) {
