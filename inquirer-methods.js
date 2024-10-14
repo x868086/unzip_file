@@ -11,7 +11,15 @@ async function askForPassword() {
             {
                 type: 'input',
                 name: 'zipPassword',
-                message: `${chalk.yellow.bold}(请输入压缩文件密码:)`,
+                message: chalk.yellow(`请输入解压密码: `),
+                mask:null,
+                validate: function (value) {
+                    if (value.length) {
+                        return true;
+                    } else {
+                        return '密码不能为空!';
+                    }
+                }                
             }
         ]);
         return answers.zipPassword;        
@@ -65,30 +73,10 @@ async function confirmFile(file){
 }
 
 
-async function testFiles(){
-    try {
-        const promptList = [
-            {
-                type: 'list',
-                message: '请选择一个选项:',
-                name: 'choice',
-                choices: ['a','b','c'],
-            },
-        ];
-
-        let answers = await inquirer.prompt(promptList)
-        return answers.choice
-    } catch (error) {
-        throw new Error(`打印文件信息错误 ${error}`)
-    }
-
-}
-
 
 export {
     askForPassword,
     showLoadingFiles,
-    testFiles,
     confirmFile   
 }
 

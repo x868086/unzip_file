@@ -1,71 +1,89 @@
-// const path = require('path');
+
 import path from 'path';
-// const fs = require('fs').promises;
 import fs from 'fs/promises';
-// const chokidar = require('chokidar');
-import chokidar from 'chokidar';
-// const config = require('./config');
-import config from './config.js';
-// const { needsPassword, unzipFile } = require('./utils');
-import { unzipFile, needsPassword } from './utils/index.js';
-// const directoryToWatch = path.resolve(__dirname, config.directoryToWatch);
-// const outputPath = path.resolve(__dirname, config.outputPath);
+
 const directoryToWatch = path.join(process.cwd(), config.directoryToWatch);
 const outputPath = path.join(process.cwd(), config.outputPath);
+
+import chokidar from 'chokidar';
 import chalk from 'chalk';
-// import "colors"
-// const { askForPassword,showLoadingFiles,confirmFile } = require('./inquirer-methods');
+
+import config from './config.js';
+import { unzipFile, needsPassword } from './zipfile-methods.js';
 import { askForPassword,showLoadingFiles,confirmFile} from './inquirer-methods.js';
 
 
+let addFiles = []; // 维护当前目录下所有.zip文件的数组
+let unzipPassword = ''; //解压密码
+let latestAddedFile = ''; //维护最新添加的文件
+let timerAdd = null; //维护新增文件定时器
 
 
-// // 创建readline接口实例，异步函数
-// function askQuestion(query) {
-//     return new Promise((resolve) => {
-//     const rl = readline.createInterface({
-//     input: process.stdin,
-//     output: process.stdout
-//     });
-
-//     rl.question(query, (answer) => {
-//     rl.close(); // 用户输入后关闭readline接口
-//     resolve(answer); // 将用户输入的值通过resolve传递出去，完成Promise
-//     });
-//     });
-// }
 
 // 初始化监视器，只关注 .zip 文件的变化
 const watcher = chokidar.watch(directoryToWatch, {
     ignored: [
         /(^|[\/\\])node_modules([\/\\]|$)/, // 忽略 node_modules 目录
+        /(^|[\/\\])szxc([\/\\]|$)/, // 忽略 service_project 目录
         /(^|[\/\\])[^\/\\]*\.(?!zip)[^\/\\]*$/, // 忽略非.zip文件
     ],
 
     persistent: true // 使监视器持久运行
 });
 
-let addFiles = []; // 维护当前目录下所有.zip文件的数组
-let unzipPassword = ''; //解压密码
-let latestAddedFile = ''; //维护最新添加的文件
-let timerAdd = null; //维护新增文件定时器
-let timerUnlink = null; //维护删除文件定时器
+
+//获取文件信息
+async function getFileInfo(filePath) {
+    try {
+        const {size,birthtime} = await fs.stat(filePath);
+        const birthtimeLocal = birthtime.toLocaleString();
+        const fileSizeInMB = `${Math.round(size / 1024,1)}KB`;
+        const fileName = path.basename(filePath);
+        const needsPWD = await needsPassword(filePath);
+        return {
+            fileName,
+            fileSizeInMB,
+            birthtime,
+            birthtimeLocal,
+            filePath,
+            needsPWD
+        };
+    } catch (error) {
+        throw new Error(`文件不存在: ${filePath}`);
+    }
+}
+// // 获取最后创建的文件
+// async function getLastModifiedFile(addFiles) {
+//     const stats = await Promise.all(addFiles.map(file => fs.stat(file)));
+//     addFiles.sort((a, b) => {
+//         const aStat = stats[addFiles.indexOf(a)];
+//         const bStat = stats[addFiles.indexOf(b)];
+//         return bStat.birthtime.getTime() - aStat.birthtime.getTime();
+//     });
+//     addFiles.splice(config.fileListLength);
+//     console.log(`最后新增的文件是: ${addFiles[0]}`);
+//     return addFiles[0];
+// }
+
 // 获取最后创建的文件
 async function getLastModifiedFile(addFiles) {
-
-    // addFiles.sort((a, b) => fs.statSync(b).birthtime.getTime() - fs.statSync(a).birthtime.getTime());
-    // console.log(`最后创建的文件是: ${addFiles[0]}`);
-    // return addFiles[0];  
-    const stats = await Promise.all(addFiles.map(file => fs.stat(file)));
     addFiles.sort((a, b) => {
-        const aStat = stats[addFiles.indexOf(a)];
-        const bStat = stats[addFiles.indexOf(b)];
-        return bStat.birthtime.getTime() - aStat.birthtime.getTime();
+        const aStat = a.birthtime.getTime();
+        const bStat = b.birthtime.getTime();
+        return bStat - aStat;
     });
-    addFiles.splice(3);
-    console.log(`最后新增的文件是: ${addFiles[0]}`);
+    addFiles.splice(config.fileListLength);
+    console.log(
+    chalk.gray(`最后新增的文件是: `)
+    + chalk.white.bgGreen(`${addFiles[0].fileName}`) + `  `
+    + `${addFiles[0].needsPWD ? chalk.yellow('需要密码') : chalk.white('不需要密码')}` + `  `
+    + chalk.white(addFiles[0].fileSizeInMB) + `  ` 
+    + chalk.white(addFiles[0].birthtimeLocal) + `  `
+    + chalk.gray(`监测文件数量:${addFiles.length}`))
     return addFiles[0];
 }
+
+
 
 // 定义一个解压文件的异步函数
 // async function unzipFile(filePath) {
@@ -81,32 +99,38 @@ async function getLastModifiedFile(addFiles) {
 watcher.on('add', async filePath => {
     timerAdd = setTimeout(async () => {
         try {
+            const fileInfo = await getFileInfo(filePath);
             console.log(`新增 .zip 文件: ${filePath}`);
-            addFiles.push(filePath);
-            latestAddedFile = filePath;
+            addFiles.push(fileInfo);
+            latestAddedFile = fileInfo;
     
             let zipFile = await getLastModifiedFile(addFiles);
             clearTimeout(timerAdd);
-            let confirmed = await confirmFile(zipFile);
-            if (confirmed) {
-                // 用户确认解压文件
-            } else {
-                // 用户取消解压文件,加载当前跟踪的3个文件列表
-                console.log(`近跟踪监控近3个文件`);
-                let fileChoice = await showLoadingFiles(addFiles);
-                console.log(`用户选择了: ${fileChoice}`);
-            }
-
-            if (await needsPassword(zipFile)) {
-                console.log(`需要解压缩密码`.yellow.bold);
-            } else {
-                console.log(`不需要解压缩密码`.green.bold);
-            }
-
             const unzipPassword = await askForPassword();
+            
+            await unzipFile(zipFile.filePath, outputPath, unzipPassword);
+            
+            // let confirmed = await confirmFile(zipFile);
+            // if (confirmed) {
+            //     // 用户确认解压文件
+            // } else {
+            //     // 用户取消解压文件,加载当前跟踪的3个文件列表
+            //     console.log(`近跟踪监控近3个文件`);
+            //     let fileChoice = await showLoadingFiles(addFiles);
+            //     console.log(`用户选择了: ${fileChoice}`);
+            // }
+
+            // if (await needsPassword(zipFile)) {
+            //     console.log(`需要解压缩密码`.yellow.bold);
+            // } else {
+            //     console.log(`不需要解压缩密码`.green.bold);
+            // }
+
+
 
         } catch (error) {
-            let errorFileIndex = addFiles.indexOf(error.path);
+            // let errorFileIndex = addFiles.indexOf(error.path);
+            let errorFileIndex = addFiles.findIndex(fileInfo => fileInfo.filePath === error.path);
             if (errorFileIndex > -1) {
                 addFiles.splice(errorFileIndex, 1);
             }
@@ -124,7 +148,8 @@ watcher.on('unlink', async filePath => {
             if (latestAddedFile === filePath) {
                 latestAddedFile = '';
             }
-            const index = addFiles.indexOf(filePath);
+            // const index = addFiles.indexOf(filePath);
+            const index = addFiles.findIndex(fileInfo => fileInfo.filePath === filePath);
             if (index > -1) {
                 addFiles.splice(index, 1);
             }        
