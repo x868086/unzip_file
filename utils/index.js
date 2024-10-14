@@ -1,8 +1,8 @@
 // 解压缩加密zip文件
 
-const StreamZip = require('node-stream-zip');
-const path = require('path');
-const fs = require('fs').promises;
+import StreamZip from 'node-stream-zip';
+import path from 'path';
+import { promises as fs } from 'fs';
 
 //验证.zip文件是否需要解压缩密码
 async function needsPassword(filePath) {
@@ -76,8 +76,8 @@ async function unzipFile(filePath, outputPath, password = null) {
 //     .then(count => console.log(`成功解压 ${count} 个文件到 ${extractToPath}`))
 //     .catch(err => console.error(`解压文件时出错: ${err}`));
 
-module.exports = {
-    unzipFile,
-    needsPassword
+export {
+    needsPassword,
+    unzipFile
 }
 

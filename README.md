@@ -7,3 +7,5 @@
  - 将项目改成esm模块，将inquirer升级到9.2.12，验证文件选择是否能用方向按键
  - 添加ora库，显示进度条
  - 解压最后新增的文件，如果输入密码错误，则加载文件列表。包含路径，创建日期，文件大小（灰色字体），是否加密（黄色，绿色）
+- nodemon 会影响inquirer的输入，需要修改nodemon命令为     "demo": "nodemon -I index2.js"
+- https://github.com/SBoudrias/Inquirer.js/issues/586

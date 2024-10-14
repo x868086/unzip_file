@@ -1,14 +1,21 @@
-const path = require('path');
-const fs = require('fs').promises;
-const chokidar = require('chokidar');
-const config = require('./config');
-const { needsPassword, unzipFile } = require('./utils');
-const directoryToWatch = path.resolve(__dirname, config.directoryToWatch);
-const outputPath = path.resolve(__dirname, config.outputPath);
-// const readline = require('readline')
-const colors = require('colors');
-const { askForPassword,showLoadingFiles,confirmFile } = require('./inquirer-methods');
-
+// const path = require('path');
+import path from 'path';
+// const fs = require('fs').promises;
+import fs from 'fs/promises';
+// const chokidar = require('chokidar');
+import chokidar from 'chokidar';
+// const config = require('./config');
+import config from './config.js';
+// const { needsPassword, unzipFile } = require('./utils');
+import { unzipFile, needsPassword } from './utils/index.js';
+// const directoryToWatch = path.resolve(__dirname, config.directoryToWatch);
+// const outputPath = path.resolve(__dirname, config.outputPath);
+const directoryToWatch = path.join(process.cwd(), config.directoryToWatch);
+const outputPath = path.join(process.cwd(), config.outputPath);
+import chalk from 'chalk';
+// import "colors"
+// const { askForPassword,showLoadingFiles,confirmFile } = require('./inquirer-methods');
+import { askForPassword,showLoadingFiles,confirmFile} from './inquirer-methods.js';
 
 
 
@@ -70,7 +77,7 @@ async function getLastModifiedFile(addFiles) {
 // }
 
 
-// 添加文件新增事件处理器
+//添加文件新增事件处理器
 watcher.on('add', async filePath => {
     timerAdd = setTimeout(async () => {
         try {
@@ -109,7 +116,8 @@ watcher.on('add', async filePath => {
 });
 
 
-// 添加文件删除事件处理器
+
+//添加文件删除事件处理器
 watcher.on('unlink', async filePath => {
         try {
             console.log(`已移除 .zip 文件: ${filePath}`);

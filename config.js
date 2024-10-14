@@ -1,4 +1,6 @@
-module.exports = {
-    directoryToWatch: '../',
-    outputPath: '../zipfile_output'
+const config = {
+    directoryToWatch : '../',
+    outputPath :'../zipfile_output'
 }
+
+export default config

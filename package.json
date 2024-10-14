@@ -1,13 +1,20 @@
 {
+  "name": "unzipfiles",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "nodemon -I index.js",
+    "demo": "nodemon -I index2.js"
   },
   "dependencies": {
+    "chalk": "^5.3.0",
     "chokidar": "^4.0.1",
-    "colors": "^1.4.0",
-    "inquirer": "^8.2.6",
-    "node-stream-zip": "^1.15.0"
+    "inquirer": "^9.2.12",
+    "node-stream-zip": "^1.15.0",
+    "ora": "^8.0.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.7"
