@@ -98,10 +98,11 @@ watcher.on('add', async filePath => {
             latestModifiedFile = await getLastModifiedFile(addFiles);
             if(latestModifiedFile.needsPWD) {
                 unzipPassword = await askForPassword();
-                await unzipFile(latestModifiedFile.filePath, outputPath, latestModifiedFile.souceType, unzipPassword);
-                
+                // await unzipFile(latestModifiedFile.filePath, outputPath, latestModifiedFile.souceType, unzipPassword);
+                await unzipFile(latestModifiedFile, outputPath, unzipPassword);
+
             } else {
-                await unzipFile(latestModifiedFile.filePath, outputPath, latestModifiedFile.souceType);
+                // await unzipFile(latestModifiedFile.filePath, outputPath, latestModifiedFile.souceType);
             }
 
 
