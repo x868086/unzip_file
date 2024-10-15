@@ -3,13 +3,17 @@
 import StreamZip from 'node-stream-zip';
 import path from 'path';
 import { promises as fs } from 'fs';
+import chalk from 'chalk';
+
+import languageEncoding from 'detect-file-encoding-and-language'
+
 
 //验证.zip文件是否需要解压缩密码
 async function needsPassword(filePath) {
     return new Promise((resolve, reject) => {
         const zip = new StreamZip({
             file: filePath,
-            storeEntries: true // 内存中缓存.zip文件的条目信息
+            storeEntries: true, // 内存中缓存.zip文件的条目信息
         });
 
         zip.on('ready', () => {
@@ -32,12 +36,35 @@ async function needsPassword(filePath) {
 }
 
 
+//检测文件编码格式
+async function detectEncode(filePath) {
+    try {
+        const fileInfo = await languageEncoding(filePath)
+        let souceType = fileInfo.encoding
+        // let dict = {
+        //     'UTF-8': chalk.bgGreen(`${souceType}`),
+        //     'GB18030': chalk.bgYellow(`${souceType}`)
+        // }
+        // console.log(`文件当前编码格式:${dict[souceType]} 文件路径:${filePath}`)
+            let dict = {
+                ['UTF-8']:'utf8',
+                GBK:'gbk',
+                GB18030:'gb2312'
+            }
+        return dict[souceType] ?? 'utf8' //空值合并运算符 (??) 在只有当值为 null 或 undefined 时才使用默认值
+    } catch (error) {
+        throw new Error(`检测文件编码格式错误, ${error}`)
+    }
+
+}
+
 // 解压缩文件
-async function unzipFile(filePath, outputPath, password = null) {
+async function unzipFile(filePath, outputPath, encode,password = null) {
     return new Promise((resolve, reject) => {
         const zip = new StreamZip({
             file: filePath,
-            storeEntries: true
+            storeEntries: true,
+            nameEncoding:encode
         });
 
         zip.on('ready', () => {
@@ -78,6 +105,7 @@ async function unzipFile(filePath, outputPath, password = null) {
 
 export {
     needsPassword,
+    detectEncode,
     unzipFile
 }
 

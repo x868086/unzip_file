@@ -1,5 +1,4 @@
 import inquirer from 'inquirer';
-// import colors from 'colors';
 import chalk from 'chalk';
 
 

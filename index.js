@@ -9,13 +9,13 @@ import chokidar from 'chokidar';
 import chalk from 'chalk';
 
 import config from './config.js';
-import { unzipFile, needsPassword } from './zipfile-methods.js';
+import { unzipFile, needsPassword,detectEncode } from './zipfile-methods.js';
 import { askForPassword,showLoadingFiles,confirmFile} from './inquirer-methods.js';
 
 
 let addFiles = []; // 维护当前目录下所有.zip文件的数组
 let unzipPassword = ''; //解压密码
-let latestAddedFile = ''; //维护最新添加的文件
+let latestModifiedFile = ''; //维护最新添加的文件
 let timerAdd = null; //维护新增文件定时器
 
 
@@ -40,30 +40,20 @@ async function getFileInfo(filePath) {
         const fileSizeInMB = `${Math.round(size / 1024,1)}KB`;
         const fileName = path.basename(filePath);
         const needsPWD = await needsPassword(filePath);
+        const souceType = await detectEncode(filePath)
         return {
             fileName,
             fileSizeInMB,
             birthtime,
             birthtimeLocal,
             filePath,
-            needsPWD
+            needsPWD,
+            souceType
         };
     } catch (error) {
         throw new Error(`文件不存在: ${filePath}`);
     }
 }
-// // 获取最后创建的文件
-// async function getLastModifiedFile(addFiles) {
-//     const stats = await Promise.all(addFiles.map(file => fs.stat(file)));
-//     addFiles.sort((a, b) => {
-//         const aStat = stats[addFiles.indexOf(a)];
-//         const bStat = stats[addFiles.indexOf(b)];
-//         return bStat.birthtime.getTime() - aStat.birthtime.getTime();
-//     });
-//     addFiles.splice(config.fileListLength);
-//     console.log(`最后新增的文件是: ${addFiles[0]}`);
-//     return addFiles[0];
-// }
 
 // 获取最后创建的文件
 async function getLastModifiedFile(addFiles) {
@@ -75,8 +65,9 @@ async function getLastModifiedFile(addFiles) {
     addFiles.splice(config.fileListLength);
     console.log(
     chalk.gray(`最后新增的文件是: `)
-    + chalk.white.bgGreen(`${addFiles[0].fileName}`) + `  `
-    + `${addFiles[0].needsPWD ? chalk.yellow('需要密码') : chalk.white('不需要密码')}` + `  `
+    + chalk.green(`${addFiles[0].fileName}`) + `  `
+    + `${addFiles[0].needsPWD ? chalk.yellow('已加密') : chalk.white('未加密')}` + `  `
+    + `${(addFiles[0].souceType ==='UTF-8') ? chalk.green(addFiles[0].souceType) : chalk.yellow(addFiles[0].souceType)}` + `  `
     + chalk.white(addFiles[0].fileSizeInMB) + `  ` 
     + chalk.white(addFiles[0].birthtimeLocal) + `  `
     + chalk.gray(`监测文件数量:${addFiles.length}`))
@@ -102,15 +93,19 @@ watcher.on('add', async filePath => {
             const fileInfo = await getFileInfo(filePath);
             console.log(`新增 .zip 文件: ${filePath}`);
             addFiles.push(fileInfo);
-            latestAddedFile = fileInfo;
-    
-            let zipFile = await getLastModifiedFile(addFiles);
+            // latestAddedFile = fileInfo;
             clearTimeout(timerAdd);
-            const unzipPassword = await askForPassword();
-            
-            await unzipFile(zipFile.filePath, outputPath, unzipPassword);
-            
-            // let confirmed = await confirmFile(zipFile);
+            latestModifiedFile = await getLastModifiedFile(addFiles);
+            if(latestModifiedFile.needsPWD) {
+                unzipPassword = await askForPassword();
+                await unzipFile(latestModifiedFile.filePath, outputPath, latestModifiedFile.souceType, unzipPassword);
+                
+            } else {
+                await unzipFile(latestModifiedFile.filePath, outputPath, latestModifiedFile.souceType);
+            }
+
+
+            // let confirmed = await confirmFile(latestModifiedFile);
             // if (confirmed) {
             //     // 用户确认解压文件
             // } else {
@@ -145,8 +140,8 @@ watcher.on('add', async filePath => {
 watcher.on('unlink', async filePath => {
         try {
             console.log(`已移除 .zip 文件: ${filePath}`);
-            if (latestAddedFile === filePath) {
-                latestAddedFile = '';
+            if (latestModifiedFile.filePath === filePath) {
+                latestModifiedFile = '';
             }
             // const index = addFiles.indexOf(filePath);
             const index = addFiles.findIndex(fileInfo => fileInfo.filePath === filePath);
