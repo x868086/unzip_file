@@ -12,7 +12,7 @@ import chokidar from 'chokidar';
 import chalk from 'chalk';
 
 import config from './config.js';
-import { unzipFile, needsPassword,detectEncode } from './zipfile-methods.js';
+import { unzipFile, unzipFile2,needsPassword,detectEncode } from './zipfile-methods.js';
 import { askForPassword,showLoadingFiles,confirmFile} from './inquirer-methods.js';
 
 
@@ -31,7 +31,7 @@ const watcher = chokidar.watch(directoryToWatch, {
         /(^|[\/\\])szxc([\/\\]|$)/, // 忽略 service_project 目录
         /(^|[\/\\])[^\/\\]*\.(?!zip)[^\/\\]*$/, // 忽略非.zip文件
     ],
-    ignoreInitial: true,  // 阻止监视器启动时触发 'add' 事件
+    ignoreInitial: false,  // 阻止监视器启动时触发 'add' 事件
     persistent: true // 使监视器持久运行
 });
 
@@ -99,11 +99,26 @@ watcher.on('add', async filePath => {
             addFiles.push(fileInfo);
             // latestAddedFile = fileInfo;
             clearTimeout(timerAdd);
-            latestModifiedFile = await getLastModifiedFile(addFiles);
+            // latestModifiedFile = await getLastModifiedFile(addFiles);
+
+            latestModifiedFile={
+                filePath:'D:\\Project\\unzip_file\\zip带密码.zip',
+                fileName:'zip带密码.zip',
+                fileSizeInMB:'1.4MB',
+                birthtime:'2023-06-06T06:06:06.000Z',
+                birthtimeLocal:'2023-06-06 14:06:06',
+                needsPWD:true,
+                souceType:'GB18030'
+            }
             if(latestModifiedFile.needsPWD) {
                 unzipPassword = await askForPassword();
+                // 免密码的方式node-stream-zip
                 // await unzipFile(latestModifiedFile.filePath, outputPath, latestModifiedFile.souceType, unzipPassword);
-                await unzipFile(latestModifiedFile, outputPath, unzipPassword);
+                
+
+                // await unzipFile(latestModifiedFile, outputPath, unzipPassword);
+                await unzipFile2(latestModifiedFile, outputPath, unzipPassword);
+
 
             } else {
                 // await unzipFile(latestModifiedFile.filePath, outputPath, latestModifiedFile.souceType);

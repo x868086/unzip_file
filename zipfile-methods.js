@@ -10,6 +10,8 @@ import iconv from 'iconv-lite'
 
 import languageEncoding from 'detect-file-encoding-and-language'
 
+import chardet from 'chardet'
+
 
 
 //验证.zip文件是否需要解压缩密码
@@ -49,75 +51,53 @@ async function detectEncode(filePath) {
             'UTF-8': chalk.bgGreen(`${souceType}`),
             'GB18030': chalk.bgYellow(`${souceType}`)
         }
-        return souceType ?? 'GB18030'
+        return souceType ?? 'GB18030'  //???
     } catch (error) {
         throw new Error(`检测文件编码格式错误, ${error}`)
     }
 
 }
 
-// 解压缩文件
-// async function unzipFile(filePath, outputPath, encode,password = null) {
-//     return new Promise((resolve, reject) => {
-//         const zip = new StreamZip({
-//             file: filePath,
-//             storeEntries: true,
-//             nameEncoding:encode
-//         });
 
-//         zip.on('ready', () => {
-//             // 仅在提供了密码时设置密码
-//             if (password) {
-//                 zip.password = password;
-//             }
+async function unzipFile2(file, outputDir,password) {
+    // 创建可读流
+    const readStream = fs.createReadStream(file.filePath);
 
-//             // 创建解压目标目录
-//             fs.mkdir(outputPath, { recursive: true })
-//                 .then(() => {
-//                     zip.extract(null, outputPath, (err, count) => {
-//                         zip.close(); // 关闭 zip 文件
-//                         if (err) {
-//                             reject(`解压失败: ${err.message}`);
-//                         } else {
-//                             resolve(count);
-//                         }
-//                     });
-//                 })
-//                 .catch(err => reject(`创建目标目录失败: ${err.message}`));
-//         });
+    const sourceEncoding = (file.souceType).toLowerCase();
 
-//         zip.on('error', (err) => {
-//             reject(`打开 ZIP 文件失败: ${err.message}`);
-//         });
-//     });
-// }
+    // 创建一个解码流转换原始编码到UTF-8
+    const decodeStream = iconv.decodeStream(sourceEncoding);
+    const encodeStream = iconv.encodeStream('utf8');
 
+// 监听数据事件
+
+readStream
+.pipe(decodeStream)  // 解码到中间编码（通常是 UTF-8）
+.pipe(encodeStream)  // 重新编码回 UTF-8 (确保处理后是有效的 UTF-8 数据)
+.on('data', (chunk) => {
+    console.log(chunk.toString());  // 此处的 chunk 将是正确编码的字符串
+});
+
+
+// 监听结束事件
+readStream.on('end', () => {
+console.log('读取完成');
+});
+
+// 监听错误事件
+readStream.on('error', (err) => {
+console.error('读取过程中发生错误:', err);
+});
+}
 
 //解压缩文件
 async function unzipFile(file, outputDir, password) {
     return new Promise((resolve, reject) => {
         // 创建可读流
         const readStream = fs.createReadStream(file.filePath);
-        // 创建解压流
+
+        //创建解压流
         const unzipStream = readStream.pipe(unzipper.Parse());
-
-
-
-
-        // //创建可读流
-        // const readStream = fs.createReadStream(file.filePath);
-        
-        // //创建解压流
-        // const unzipStream = readStream
-        // .pipe(iconv.decodeStream((file.souceType).toLowerCase()))
-        // .pipe(iconv.encodeStream('utf8'))
-        // .pipe(unzipper.Parse());
-
-        // readStream.on('data', e => {
-        //     loading.text = 'Loading...'
-        //     loading.start()
-        // })
-
 
 
         // 处理解压事件
@@ -133,17 +113,13 @@ async function unzipFile(file, outputDir, password) {
                     // 设置密码
                     entry.password = password;
                     // 获取输出路径
-                    // const outputPath = `${outputDir}/${entry.path}`;
-                    const outputPath = path.join(outputDir, '123.xlsx');
+                    const outputPath = path.join(outputDir, decodedPath);
                     
                     // 创建写入流
                     const writeStream = fs.createWriteStream(outputPath);
 
                     // 将数据写入文件
                     entry.pipe(writeStream);
-                    // entry.pipe(iconv.decodeStream((file.souceType).toLowerCase()))
-                    // .pipe(iconv.encodeStream((file.souceType).toLowerCase()))
-                    // .pipe(writeStream)
 
                     // 监听写入完成事件
                     writeStream.on('finish', () => {
@@ -172,6 +148,7 @@ async function unzipFile(file, outputDir, password) {
 export {
     needsPassword,
     detectEncode,
-    unzipFile
+    unzipFile,
+    unzipFile2
 }
 
