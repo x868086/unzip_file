@@ -2,8 +2,11 @@
 import path from 'path';
 import fs from 'fs/promises';
 
-const directoryToWatch = path.join(process.cwd(), config.directoryToWatch);
-const outputPath = path.join(process.cwd(), config.outputPath);
+// const directoryToWatch = path.join(process.cwd(), config.directoryToWatch);
+// const outputPath = path.join(process.cwd(), config.outputPath);
+
+const directoryToWatch = path.join(process.cwd());
+const outputPath = path.join(process.cwd());
 
 import chokidar from 'chokidar';
 import chalk from 'chalk';
@@ -17,6 +20,7 @@ let addFiles = []; // 维护当前目录下所有.zip文件的数组
 let unzipPassword = ''; //解压密码
 let latestModifiedFile = ''; //维护最新添加的文件
 let timerAdd = null; //维护新增文件定时器
+let isLoading = false;
 
 
 
@@ -27,7 +31,7 @@ const watcher = chokidar.watch(directoryToWatch, {
         /(^|[\/\\])szxc([\/\\]|$)/, // 忽略 service_project 目录
         /(^|[\/\\])[^\/\\]*\.(?!zip)[^\/\\]*$/, // 忽略非.zip文件
     ],
-
+    ignoreInitial: true,  // 阻止监视器启动时触发 'add' 事件
     persistent: true // 使监视器持久运行
 });
 
@@ -104,26 +108,6 @@ watcher.on('add', async filePath => {
             } else {
                 // await unzipFile(latestModifiedFile.filePath, outputPath, latestModifiedFile.souceType);
             }
-
-
-            // let confirmed = await confirmFile(latestModifiedFile);
-            // if (confirmed) {
-            //     // 用户确认解压文件
-            // } else {
-            //     // 用户取消解压文件,加载当前跟踪的3个文件列表
-            //     console.log(`近跟踪监控近3个文件`);
-            //     let fileChoice = await showLoadingFiles(addFiles);
-            //     console.log(`用户选择了: ${fileChoice}`);
-            // }
-
-            // if (await needsPassword(zipFile)) {
-            //     console.log(`需要解压缩密码`.yellow.bold);
-            // } else {
-            //     console.log(`不需要解压缩密码`.green.bold);
-            // }
-
-
-
         } catch (error) {
             // let errorFileIndex = addFiles.indexOf(error.path);
             let errorFileIndex = addFiles.findIndex(fileInfo => fileInfo.filePath === error.path);
