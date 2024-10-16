@@ -10,7 +10,6 @@ import iconv from 'iconv-lite'
 
 import languageEncoding from 'detect-file-encoding-and-language'
 
-import chardet from 'chardet'
 
 
 

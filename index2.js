@@ -3,7 +3,7 @@ import path from 'path';
 import unzipper  from 'unzipper';
 import fs from 'fs';
 import iconv from 'iconv-lite'
-import XLSX from 'xlsx';
+
 
 const outputPath = path.join(process.cwd());
 
@@ -170,17 +170,6 @@ async function unzipFile5(file) {
     });
 }
 
-async function readExcel(filePath) {
-try {
-    const workbook = XLSX.readFile(filePath);
-    const sheetName = workbook.SheetNames[0];
-    const sheet = workbook.Sheets[sheetName];
-    const data = XLSX.utils.sheet_to_json(sheet);
-    console.log(data);
-} catch (error) {
-    console.log(error)
-}
-}
 
 
 
@@ -191,7 +180,7 @@ try {
         // await unzipFile3(latestModifiedFile) //非加密的zip文件
         // await unzipFile4(latestModifiedFile) //可解压缩加密zip文件
         await unzipFile5(latestModifiedFile)
-        // await readExcel('D:\\Project\\unzip_file\\新建 XLSX 工作表.xlsx')
+
     } catch (error) {
         console.log(error)
     }
