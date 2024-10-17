@@ -33,6 +33,9 @@ async function showLoadingFiles(addFiles){
         console.log(`${chalk.red.bold}(没有跟踪到任何文件,请重启程序:)`);
         return null;
     }
+    let showList = addFiles.map(e=>{
+        return e.filePath
+    })
 
     try {
         const answers = await inquirer.prompt([
@@ -41,12 +44,12 @@ async function showLoadingFiles(addFiles){
             // name: 'topping',
             type: 'list',
             name: 'choice',
-            message: '请选择一个.zip文件',
-            choices: addFiles
+            message: '请选择一个.zip文件解压',
+            choices: showList
             }
         ])
         // return answers.topping;         
-        return answers.choice;         
+        return answers;         
     } catch (error) {
         console.error('选择文件时发生错误:', error);
         return null;
@@ -54,19 +57,19 @@ async function showLoadingFiles(addFiles){
 
 }
 
-// 确认当前加载文件是否正确
-async function confirmFile(file){
+// 确认界面
+async function confirmedFile(msg){
     try {
         const answers = await inquirer.prompt([
             {
                 type: 'confirm',
                 name:'confirmed',
-                message: `${chalk.yellow.bold}(是否确认解压缩文件:) ${file}`
+                message: `${chalk.yellow(msg)}`
             }
         ])
         return answers.confirmed;        
     } catch (error) {
-        console.error('确认文件时发生错误:', error);
+        console.error('确认时发生错误:', error);
     }
 
 }
@@ -76,6 +79,6 @@ async function confirmFile(file){
 export {
     askForPassword,
     showLoadingFiles,
-    confirmFile   
+    confirmedFile   
 }
 

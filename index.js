@@ -12,8 +12,8 @@ import chokidar from 'chokidar';
 import chalk from 'chalk';
 
 import config from './config.js';
-import { unzipFile,needsPassword,detectEncode } from './zipfile-methods.js';
-import { askForPassword,showLoadingFiles,confirmFile} from './inquirer-methods.js';
+import { getFileInfo,getLastModifiedFile,needsPasswordUnzip} from './zipfile-methods.js';
+
 
 
 let addFiles = []; // 维护当前目录下所有.zip文件的数组
@@ -30,52 +30,16 @@ const watcher = chokidar.watch(directoryToWatch, {
         /(^|[\/\\])szxc([\/\\]|$)/, // 忽略 service_project 目录
         /(^|[\/\\])[^\/\\]*\.(?!zip)[^\/\\]*$/, // 忽略非.zip文件
     ],
-    ignoreInitial: false,  // 阻止监视器启动时触发 'add' 事件
+    ignoreInitial: true,  // 阻止监视器启动时触发 'add' 事件
     persistent: true // 使监视器持久运行
 });
 
 
-//获取文件信息
-async function getFileInfo(filePath) {
-    try {
-        const {size,birthtime} = await fs.stat(filePath);
-        const birthtimeLocal = birthtime.toLocaleString();
-        const fileSizeInMB = `${Math.round(size / 1024,1)}KB`;
-        const fileName = path.basename(filePath);
-        const needsPWD = await needsPassword(filePath);
-        const sourceType = await detectEncode(filePath)
-        return {
-            fileName,
-            fileSizeInMB,
-            birthtime,
-            birthtimeLocal,
-            filePath,
-            needsPWD,
-            sourceType
-        };
-    } catch (error) {
-        throw new Error(`文件不存在: ${filePath}`);
-    }
-}
 
-// 获取最后创建的文件
-async function getLastModifiedFile(addFiles) {
-    addFiles.sort((a, b) => {
-        const aStat = a.birthtime.getTime();
-        const bStat = b.birthtime.getTime();
-        return bStat - aStat;
-    });
-    addFiles.splice(config.fileListLength);
-    console.log(
-    chalk.gray(`最后新增的文件是: `)
-    + chalk.green(`${addFiles[0].fileName}`) + `  `
-    + `${addFiles[0].needsPWD ? chalk.yellow('已加密') : chalk.white('未加密')}` + `  `
-    + `${(addFiles[0].sourceType ==='UTF-8') ? chalk.green(addFiles[0].sourceType) : chalk.yellow(addFiles[0].sourceType)}` + `  `
-    + chalk.white(addFiles[0].fileSizeInMB) + `  ` 
-    + chalk.white(addFiles[0].birthtimeLocal) + `  `
-    + chalk.gray(`监测文件数量:${addFiles.length}`))
-    return addFiles[0];
-}
+
+
+
+
 
 
 
@@ -88,6 +52,7 @@ watcher.on('add', async filePath => {
             addFiles.push(fileInfo);
             clearTimeout(timerAdd);
             latestModifiedFile = await getLastModifiedFile(addFiles);
+            await needsPasswordUnzip(latestModifiedFile,addFiles)
 
             // latestModifiedFile={
             //     filePath:'C:\\Users\\Administrator\\Desktop\\export\\unzip_file\\zip带密码.zip',
@@ -108,25 +73,34 @@ watcher.on('add', async filePath => {
             //     needsPWD:false,
             //     sourceType:'GB18030'
             // }
-            if(latestModifiedFile.needsPWD) {
-                try {
-                    let unzipPassword = await askForPassword();
-                    let {fileSize,fileName} = await unzipFile(latestModifiedFile.filePath,outputPath,latestModifiedFile.sourceType, unzipPassword)
-                    console.log(fileSize,fileName)                    
-                } catch (error) {
-                    console.log(error)
-                }
-            } else {
-                let {fileSize,fileName} = await unzipFile(latestModifiedFile.filePath, outputPath, latestModifiedFile.sourceType);
-                console.log(fileSize,fileName)
-            }
+            // if(latestModifiedFile.needsPWD) {
+            //     let unzipPassword = await askForPassword();
+            //     let {fileSize,fileName} = await unzipFile(latestModifiedFile.filePath,outputPath,latestModifiedFile.sourceType, unzipPassword)
+            //     console.log(chalk.white.bgGreen(`解压成功    `) + chalk.white(`文件名:${fileName}  文件大小:${fileSize}KB`))
+                                    
+            // } else {
+            //     let confirmed = await confirmedFile(`是否解压缩文件:${latestModifiedFile.filePath}`)
+            //     if(confirmed) {
+            //         let {fileSize,fileName} = await unzipFile(latestModifiedFile.filePath, outputPath, latestModifiedFile.sourceType);
+            //         console.log(chalk.green.bold(`解压成功`) + chalk.white(`  文件名:${fileName}  文件大小:${fileSize}KB`))        
+            //     } else {
+            //         let targetFile = await showLoadingFiles(addFiles)
+            //         let chooseIndex = addFiles.findIndex(fileInfo => fileInfo.filePath === targetFile)
+            //         if(chooseIndex > -1) {
+            //             let chooseFile = addFiles[chooseIndex]
+            //             await unzipFile(chooseFile.filePath, outputPath, chooseFile.sourceType)
+            //         }
+            //     }
+                
+                
+            // }
         } catch (error) {
             // let errorFileIndex = addFiles.indexOf(error.path);
             let errorFileIndex = addFiles.findIndex(fileInfo => fileInfo.filePath === error.path);
             if (errorFileIndex > -1) {
                 addFiles.splice(errorFileIndex, 1);
             }
-            console.error(`新增文件不存在: ${error.path}`);
+            console.error(`新增文件不存在: ${error.message}`);
         }        
     },1500) //延迟1000ms，当有zip文件名修改时，等待删除原有文件后调用getLastModifiedFile遍历正确的addFiles
 });
