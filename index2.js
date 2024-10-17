@@ -15,8 +15,8 @@ import { detectEncode } from './zipfile-methods.js';
 // }
 
 let latestModifiedFile={
-    filePath:'D:\\Project\\unzip_file\\免加密的文件.zip',
-    fileName:'免加密的文件.zip',
+    filePath:'C:\\Users\\Administrator\\Desktop\\export\\unzip_file\\TEMP_EXPORT_DETAIL-202410170928161613.zip',
+    fileName:'TEMP_EXPORT_DETAIL-202410170928161613.zip',
     fileSizeInMB:'1.4MB',
     birthtime:'2023-06-06T06:06:06.000Z',
     birthtimeLocal:'2023-06-06 14:06:06',
@@ -148,7 +148,7 @@ async function unzipFile4(file) {
         var decodedPath = isUnicode ? directory.files[0].path : iconv.decode(directory.files[0].pathBuffer, file.souceType);
         return new Promise( (resolve, reject) => {
         directory.files[0]
-            .stream('a123')
+            .stream('Mze3Rz')
             .pipe(fs.createWriteStream(decodedPath))
             .on('error',reject)
             .on('finish',resolve)
@@ -178,8 +178,8 @@ async function unzipFile5(file) {
     try {
         // await unzipFile(latestModifiedFile,outputPath,'a123')
         // await unzipFile3(latestModifiedFile) //非加密的zip文件
-        // await unzipFile4(latestModifiedFile) //可解压缩加密zip文件
-        await unzipFile5(latestModifiedFile)
+        await unzipFile4(latestModifiedFile) //可解压缩加密zip文件
+        // await unzipFile5(latestModifiedFile)
 
     } catch (error) {
         console.log(error)

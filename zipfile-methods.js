@@ -45,12 +45,12 @@ async function needsPassword(filePath) {
 async function detectEncode(filePath) {
     try {
         const fileInfo = await languageEncoding(filePath)
-        let souceType = fileInfo.encoding
+        let sourceType = fileInfo.encoding
         let dict = {
-            'UTF-8': chalk.bgGreen(`${souceType}`),
-            'GB18030': chalk.bgYellow(`${souceType}`)
+            'UTF-8': chalk.bgGreen(`${sourceType}`),
+            'GB18030': chalk.bgYellow(`${sourceType}`)
         }
-        return souceType ?? 'GB18030'  //???
+        return sourceType ?? 'GB18030'  //为null或undefined时设置默认值
     } catch (error) {
         throw new Error(`检测文件编码格式错误, ${error}`)
     }
@@ -58,96 +58,74 @@ async function detectEncode(filePath) {
 }
 
 
-async function unzipFile2(file, outputDir,password) {
-    // 创建可读流
-    const readStream = fs.createReadStream(file.filePath);
 
-    const sourceEncoding = (file.souceType).toLowerCase();
-
-    // 创建一个解码流转换原始编码到UTF-8
-    const decodeStream = iconv.decodeStream(sourceEncoding);
-    const encodeStream = iconv.encodeStream('utf8');
-
-// 监听数据事件
-
-readStream
-.pipe(decodeStream)  // 解码到中间编码（通常是 UTF-8）
-.pipe(encodeStream)  // 重新编码回 UTF-8 (确保处理后是有效的 UTF-8 数据)
-.on('data', (chunk) => {
-    console.log(chunk.toString());  // 此处的 chunk 将是正确编码的字符串
-});
-
-
-// 监听结束事件
-readStream.on('end', () => {
-console.log('读取完成');
-});
-
-// 监听错误事件
-readStream.on('error', (err) => {
-console.error('读取过程中发生错误:', err);
-});
-}
 
 //解压缩文件
-async function unzipFile(file, outputDir, password) {
-    return new Promise((resolve, reject) => {
-        // 创建可读流
-        const readStream = fs.createReadStream(file.filePath);
+async function unzipFile(filePath,outputPath,sourceType,unzipPassword) {
 
-        //创建解压流
-        const unzipStream = readStream.pipe(unzipper.Parse());
+    try {
+        const directory = await unzipper.Open.file(filePath);
+        console.log('directory', directory);
+        var isUnicode = directory.files[0].isUnicode;
+        var decodedPath = isUnicode ? directory.files[0].path : iconv.decode(directory.files[0].pathBuffer, sourceType);
+        return new Promise( (resolve, reject) => {
+            const fileStream = directory.files[0].stream(unzipPassword);
+        // 监听解压流的错误事件
+        fileStream.on('error', (err) => {
+            reject(err);
+        });
+        const writeStream = fs.createWriteStream(decodedPath);
+        writeStream.on('error', (err) => {
+            reject(err);
+        });
 
-
-        // 处理解压事件
-        unzipStream
-            .on('entry', (entry) => {
-                var isUnicode = entry.props.flags.isUnicode;
-                // Archives created by legacy tools usually have filenames encoded with IBM PC (Windows OEM) character set.
-                // You can decode filenames with preferred character set
-                var decodedPath = isUnicode ? entry.path : iconv.decode(entry.props.pathBuffer, file.souceType);
-
-                // 检查是否为文件
-                if (entry.type === 'File') {
-                    // 设置密码
-                    entry.password = password;
-                    // 获取输出路径
-                    const outputPath = path.join(outputDir, decodedPath);
-                    
-                    // 创建写入流
-                    const writeStream = fs.createWriteStream(outputPath);
-
-                    // 将数据写入文件
-                    entry.pipe(writeStream);
-
-                    // 监听写入完成事件
-                    writeStream.on('finish', () => {
-                        writeStream.close();
-                    });
-
-                    // 错误处理
-                    writeStream.on('error', (err) => {
-                        reject(err);
-                    });
-                }
-
-                // 移动到下一个条目
-                entry.autodrain();
-            })
-            .on('close', () => {
-                resolve();
-            })
-            .on('error', (err) => {
-                reject(err);
+        writeStream.on('finish', () => {
+            resolve({
+                fileSize:(directory.files[0]['uncompressedSize']/1024).toFixed(1),
+                fileName:decodedPath                
             });
-    });
+        });
+
+        fileStream.pipe(writeStream);        
+
+            // directory.files[0]
+            // .stream(unzipPassword)
+            // .pipe(fs.createWriteStream(decodedPath))
+            // .on('finish',resolve)
+            // .on('error',reject)
+
+
+
+            // directory.files[0]
+            // .stream(unzipPassword)
+            // .pipe(fs.createWriteStream(decodedPath))
+            // .on('finish',resolve)
+            // .on('error',reject('error'))
+            // .on('finish',()=>{ // 这里是否改成resolve() ???
+            //     resolve({
+            //         fileSize:(directory.files[0]['uncompressedSize']/1024).toFixed(1),
+            //         fileName:decodedPath
+            //     })
+            // })
+            // .on('finish',
+            //     resolve({
+            //         fileSize:(directory.files[0]['uncompressedSize']/1024).toFixed(1),
+            //         fileName:decodedPath
+            //     })
+            // )
+
+            // let abc = stream  stream.on() ???
+        });        
+    } catch (error) {
+        console.log(error)
+    }
+    
 }
 
 
 export {
     needsPassword,
     detectEncode,
-    unzipFile,
-    unzipFile2
+    unzipFile
 }
 

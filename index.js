@@ -12,15 +12,14 @@ import chokidar from 'chokidar';
 import chalk from 'chalk';
 
 import config from './config.js';
-import { unzipFile, unzipFile2,needsPassword,detectEncode } from './zipfile-methods.js';
+import { unzipFile,needsPassword,detectEncode } from './zipfile-methods.js';
 import { askForPassword,showLoadingFiles,confirmFile} from './inquirer-methods.js';
 
 
 let addFiles = []; // 维护当前目录下所有.zip文件的数组
-let unzipPassword = ''; //解压密码
 let latestModifiedFile = ''; //维护最新添加的文件
 let timerAdd = null; //维护新增文件定时器
-let isLoading = false;
+let isLoading = false; //维护首次读取频率，提高性能，还未实现？？？
 
 
 
@@ -44,7 +43,7 @@ async function getFileInfo(filePath) {
         const fileSizeInMB = `${Math.round(size / 1024,1)}KB`;
         const fileName = path.basename(filePath);
         const needsPWD = await needsPassword(filePath);
-        const souceType = await detectEncode(filePath)
+        const sourceType = await detectEncode(filePath)
         return {
             fileName,
             fileSizeInMB,
@@ -52,7 +51,7 @@ async function getFileInfo(filePath) {
             birthtimeLocal,
             filePath,
             needsPWD,
-            souceType
+            sourceType
         };
     } catch (error) {
         throw new Error(`文件不存在: ${filePath}`);
@@ -71,23 +70,13 @@ async function getLastModifiedFile(addFiles) {
     chalk.gray(`最后新增的文件是: `)
     + chalk.green(`${addFiles[0].fileName}`) + `  `
     + `${addFiles[0].needsPWD ? chalk.yellow('已加密') : chalk.white('未加密')}` + `  `
-    + `${(addFiles[0].souceType ==='UTF-8') ? chalk.green(addFiles[0].souceType) : chalk.yellow(addFiles[0].souceType)}` + `  `
+    + `${(addFiles[0].sourceType ==='UTF-8') ? chalk.green(addFiles[0].sourceType) : chalk.yellow(addFiles[0].sourceType)}` + `  `
     + chalk.white(addFiles[0].fileSizeInMB) + `  ` 
     + chalk.white(addFiles[0].birthtimeLocal) + `  `
     + chalk.gray(`监测文件数量:${addFiles.length}`))
     return addFiles[0];
 }
 
-
-
-// 定义一个解压文件的异步函数
-// async function unzipFile(filePath) {
-//     const targetDir = filePath.replace('.zip', '');
-//     await fs.createReadStream(filePath)
-//         .pipe(unzip.Extract({ path: targetDir }))
-//         .promise();
-//     console.log(`解压完成: ${filePath}`);
-// }
 
 
 //添加文件新增事件处理器
@@ -97,31 +86,39 @@ watcher.on('add', async filePath => {
             const fileInfo = await getFileInfo(filePath);
             console.log(`新增 .zip 文件: ${filePath}`);
             addFiles.push(fileInfo);
-            // latestAddedFile = fileInfo;
             clearTimeout(timerAdd);
             // latestModifiedFile = await getLastModifiedFile(addFiles);
 
             latestModifiedFile={
-                filePath:'D:\\Project\\unzip_file\\zip带密码.zip',
+                filePath:'C:\\Users\\Administrator\\Desktop\\export\\unzip_file\\zip带密码.zip',
                 fileName:'zip带密码.zip',
                 fileSizeInMB:'1.4MB',
                 birthtime:'2023-06-06T06:06:06.000Z',
                 birthtimeLocal:'2023-06-06 14:06:06',
                 needsPWD:true,
-                souceType:'GB18030'
+                sourceType:'GB18030'
             }
+        
+            // latestModifiedFile={
+            //     filePath:'C:\\Users\\Administrator\\Desktop\\export\\unzip_file\\zip免加密.zip',
+            //     fileName:'zip免加密.zip',
+            //     fileSizeInMB:'1.4MB',
+            //     birthtime:'2023-06-06T06:06:06.000Z',
+            //     birthtimeLocal:'2023-06-06 14:06:06',
+            //     needsPWD:false,
+            //     sourceType:'GB18030'
+            // }
             if(latestModifiedFile.needsPWD) {
-                unzipPassword = await askForPassword();
-                // 免密码的方式node-stream-zip
-                // await unzipFile(latestModifiedFile.filePath, outputPath, latestModifiedFile.souceType, unzipPassword);
-                
-
-                // await unzipFile(latestModifiedFile, outputPath, unzipPassword);
-                await unzipFile2(latestModifiedFile, outputPath, unzipPassword);
-
-
+                try {
+                    let unzipPassword = await askForPassword();
+                    let {fileSize,fileName} = await unzipFile(latestModifiedFile.filePath,outputPath,latestModifiedFile.sourceType, unzipPassword)
+                    console.log(fileSize,fileName)                    
+                } catch (error) {
+                    console.log(error)
+                }
             } else {
-                // await unzipFile(latestModifiedFile.filePath, outputPath, latestModifiedFile.souceType);
+                let {fileSize,fileName} = await unzipFile(latestModifiedFile.filePath, outputPath, latestModifiedFile.sourceType);
+                console.log(fileSize,fileName)
             }
         } catch (error) {
             // let errorFileIndex = addFiles.indexOf(error.path);
