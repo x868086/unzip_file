@@ -87,17 +87,17 @@ watcher.on('add', async filePath => {
             console.log(`新增 .zip 文件: ${filePath}`);
             addFiles.push(fileInfo);
             clearTimeout(timerAdd);
-            // latestModifiedFile = await getLastModifiedFile(addFiles);
+            latestModifiedFile = await getLastModifiedFile(addFiles);
 
-            latestModifiedFile={
-                filePath:'C:\\Users\\Administrator\\Desktop\\export\\unzip_file\\zip带密码.zip',
-                fileName:'zip带密码.zip',
-                fileSizeInMB:'1.4MB',
-                birthtime:'2023-06-06T06:06:06.000Z',
-                birthtimeLocal:'2023-06-06 14:06:06',
-                needsPWD:true,
-                sourceType:'GB18030'
-            }
+            // latestModifiedFile={
+            //     filePath:'C:\\Users\\Administrator\\Desktop\\export\\unzip_file\\zip带密码.zip',
+            //     fileName:'zip带密码.zip',
+            //     fileSizeInMB:'1.4MB',
+            //     birthtime:'2023-06-06T06:06:06.000Z',
+            //     birthtimeLocal:'2023-06-06 14:06:06',
+            //     needsPWD:true,
+            //     sourceType:'GB18030'
+            // }
         
             // latestModifiedFile={
             //     filePath:'C:\\Users\\Administrator\\Desktop\\export\\unzip_file\\zip免加密.zip',
