@@ -18,6 +18,8 @@
 - 加压缩带密码文件 https://zhuanlan.zhihu.com/p/474840546
 - 验证压缩文件在vscode中是什么编码，用detect方法检测压缩文件编码格式，检测excel文件编码格式
 
+- 实现，根据directory.files的文件数， 解压缩多个文件
+
 - unzip -O utf-8 -l zipfile.zip   unzip -O gbk -l zipfile.zip   
 GBK GB2312 gbk gb2312 GB18030 cp437  cp1251 cp1252 windows-1252 windows-1251
 
@@ -63,3 +65,5 @@ fs.createReadStream('path/to/archive.zip')
 3. file.souceType: 这是源数据的编码类型。iconv.decode() 将会用这个编码读取 entry.props.pathBuffer。
 这条命令的作用，一般来说，就是将从 ZIP 文件中获取到的条目路径名（这个路径名被编码并存储在 Buffer 对象 entry.props.pathBuffer 中）从其原始编码 (file.souceType) 转换为 UTF-8 编码的字符串。
 例如，如果你从一个由 Windows 系统创建的 ZIP 文件中取出一个条目，该条目的路径可能被编码为 GBK。这样，你就可以使用 iconv.decode(entry.props.pathBuffer, 'gbk') 来得到正确显示的路径名。
+
+

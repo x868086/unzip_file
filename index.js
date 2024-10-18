@@ -13,6 +13,7 @@ import chalk from 'chalk';
 
 import config from './config.js';
 import { getFileInfo,getLastModifiedFile,needsPasswordUnzip} from './zipfile-methods.js';
+import {clearScreen} from './inquirer-methods.js'
 
 
 
@@ -47,6 +48,7 @@ const watcher = chokidar.watch(directoryToWatch, {
 watcher.on('add', async filePath => {
     timerAdd = setTimeout(async () => {
         try {
+            clearScreen()
             const fileInfo = await getFileInfo(filePath);
             console.log(`新增 .zip 文件: ${filePath}`);
             addFiles.push(fileInfo);
@@ -54,46 +56,6 @@ watcher.on('add', async filePath => {
             latestModifiedFile = await getLastModifiedFile(addFiles);
             await needsPasswordUnzip(latestModifiedFile,addFiles)
 
-            // latestModifiedFile={
-            //     filePath:'C:\\Users\\Administrator\\Desktop\\export\\unzip_file\\zip带密码.zip',
-            //     fileName:'zip带密码.zip',
-            //     fileSizeInMB:'1.4MB',
-            //     birthtime:'2023-06-06T06:06:06.000Z',
-            //     birthtimeLocal:'2023-06-06 14:06:06',
-            //     needsPWD:true,
-            //     sourceType:'GB18030'
-            // }
-        
-            // latestModifiedFile={
-            //     filePath:'C:\\Users\\Administrator\\Desktop\\export\\unzip_file\\zip免加密.zip',
-            //     fileName:'zip免加密.zip',
-            //     fileSizeInMB:'1.4MB',
-            //     birthtime:'2023-06-06T06:06:06.000Z',
-            //     birthtimeLocal:'2023-06-06 14:06:06',
-            //     needsPWD:false,
-            //     sourceType:'GB18030'
-            // }
-            // if(latestModifiedFile.needsPWD) {
-            //     let unzipPassword = await askForPassword();
-            //     let {fileSize,fileName} = await unzipFile(latestModifiedFile.filePath,outputPath,latestModifiedFile.sourceType, unzipPassword)
-            //     console.log(chalk.white.bgGreen(`解压成功    `) + chalk.white(`文件名:${fileName}  文件大小:${fileSize}KB`))
-                                    
-            // } else {
-            //     let confirmed = await confirmedFile(`是否解压缩文件:${latestModifiedFile.filePath}`)
-            //     if(confirmed) {
-            //         let {fileSize,fileName} = await unzipFile(latestModifiedFile.filePath, outputPath, latestModifiedFile.sourceType);
-            //         console.log(chalk.green.bold(`解压成功`) + chalk.white(`  文件名:${fileName}  文件大小:${fileSize}KB`))        
-            //     } else {
-            //         let targetFile = await showLoadingFiles(addFiles)
-            //         let chooseIndex = addFiles.findIndex(fileInfo => fileInfo.filePath === targetFile)
-            //         if(chooseIndex > -1) {
-            //             let chooseFile = addFiles[chooseIndex]
-            //             await unzipFile(chooseFile.filePath, outputPath, chooseFile.sourceType)
-            //         }
-            //     }
-                
-                
-            // }
         } catch (error) {
             // let errorFileIndex = addFiles.indexOf(error.path);
             let errorFileIndex = addFiles.findIndex(fileInfo => fileInfo.filePath === error.path);
@@ -129,26 +91,9 @@ watcher.on('error', async error => {
     console.error(`监视器错误: ${error}`);
     // 在这里可以进行异步错误处理
     // await someAsyncErrorHandlingFunction(error);
+    console.log(chalk.red(`请重启程序`));
 });
 
 
-// watcher.on('change', async filePath => {
-//     try {
-//         console.log(`修改 .zip 文件: ${filePath}`);
-//         // Here you can add additional logic to handle file changes
-//         // let zipFile = await getLastModifiedFile(addFiles);
-
-//         // unzipPassword = await askQuestion('请输入加压密码：');
-//         // console.log(`输入解压缩密码为: ${unzipPassword}`);
-//     } catch (error) {
-//         console.error(`处理文件修改时出错: ${error}`);
-//     }    
-// })
-
-
-// watcher
-//     .on('add', path => console.log(`新增 .zip 文件: ${path}`))
-//     .on('unlink', path => console.log(`移除 .zip 文件: ${path}`))
-//     .on('error', error => console.error(`监视器错误: ${error}`));
 
 console.log(`开始监控目录: ${directoryToWatch}`);

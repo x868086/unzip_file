@@ -10,7 +10,7 @@ import iconv from 'iconv-lite'
 
 import languageEncoding from 'detect-file-encoding-and-language'
 
-import { askForPassword, showLoadingFiles, confirmedFile } from './inquirer-methods.js';
+import { askForPassword, showLoadingFiles, confirmedFile,clearScreen } from './inquirer-methods.js';
 import config from './config.js';
 
 const outputPath = path.join(process.cwd());
@@ -87,6 +87,7 @@ async function getFileInfo(filePath) {
 
 // 获取最后创建的文件
 async function getLastModifiedFile(addFiles) {
+    clearScreen()
     addFiles.sort((a, b) => {
         const aStat = a.birthtime.getTime();
         const bStat = b.birthtime.getTime();
@@ -108,7 +109,17 @@ async function getLastModifiedFile(addFiles) {
 async function isConfirmed(lastestModifiedFile,addFiles) {
     let result = await confirmedFile(`是否解压缩文件:${lastestModifiedFile.filePath}`)
     if(result) {
-        await unzipFile(lastestModifiedFile.filePath,outputPath,lastestModifiedFile.sourceType, null,addFiles)
+        unzipFile(lastestModifiedFile.filePath,outputPath,lastestModifiedFile.sourceType, null,addFiles)
+        .then(({fileSize,fileName})=>{
+            console.log(chalk.white.bgGreen(`解压成功`) 
+            + chalk.white(`    文件名:${fileName}  文件大小:${fileSize}KB`))
+            deleteFromAddList(lastestModifiedFile.filePath,addFiles)             
+        })
+        .catch(({err,fileSize,fileName})=>{
+            console.log(chalk.white.bgRed(`解压失败`) 
+            + chalk.white(`    文件名:${fileName}  文件大小:${fileSize}KB`)
+            + chalk.white(`    错误信息:${err.message}`))            
+        })
     } else {
         let targetFile = await chooseTargetFile(addFiles)
         await needsPasswordUnzip(targetFile,addFiles)
@@ -118,8 +129,21 @@ async function isConfirmed(lastestModifiedFile,addFiles) {
 async function needsPasswordUnzip(latestModifiedFile,addFiles) {
     if (latestModifiedFile.needsPWD) {
         let unzipPassword = await askForPassword();
-        let {fileSize,fileName} = await unzipFile(latestModifiedFile.filePath,outputPath,latestModifiedFile.sourceType, unzipPassword,addFiles)
-        // console.log(chalk.white.bgGreen(`解压成功    `) + chalk.white(`文件名:${fileName}  文件大小:${fileSize}`))        
+        try {
+            let {fileSize,fileName} = 
+            await unzipFile(latestModifiedFile.filePath,outputPath,latestModifiedFile.sourceType, unzipPassword,addFiles)
+            deleteFromAddList(lastestModifiedFile.filePath,addFiles)  
+            console.log(
+                chalk.white.bgGreen(`解压成功`) 
+                + chalk.white(`    文件名:${fileName}  文件大小:${fileSize}KB`)
+            )             
+        } catch ({err,fileSize,fileName,addFiles}) {
+            console.log(chalk.white.bgRed(`解压失败`) 
+            + chalk.white(`    文件名:${fileName}  文件大小:${fileSize}KB`)
+            + chalk.white(`    错误信息:${err.message}`))
+            await chooseTargetFile(addFiles)               
+        }
+       
     } else {
         await isConfirmed(latestModifiedFile,addFiles)
     }
@@ -128,17 +152,27 @@ async function needsPasswordUnzip(latestModifiedFile,addFiles) {
 //从列表中选择一个文件
 async function chooseTargetFile(addFiles) {
         let targetFile = await showLoadingFiles(addFiles)
-        let chooseIndex = addFiles.findIndex(fileInfo => fileInfo.filePath === targetFile)
+        let chooseIndex = addFiles.findIndex(fileInfo => fileInfo.filePath === targetFile.choice)
         if(chooseIndex > -1) {
             await needsPasswordUnzip(addFiles[chooseIndex],addFiles)
         }     
 }
 
-
+// 解压缩成功后重addList中删除已经解压缩过的文件
+function deleteFromAddList(filePath,addFiles) {
+    if(addFiles.length===1) { //跟踪文件列表中留一个文件
+        return 
+    }
+    let chooseIndex = addFiles.findIndex(fileInfo => fileInfo.filePath === filePath)
+    if(chooseIndex > -1) {
+        return addFiles.splice(chooseIndex,1)
+    }         
+}
 
 
 //解压缩文件
 async function unzipFile(filePath,outputPath,sourceType,unzipPassword,addFiles) {
+    clearScreen()
     try {
         const directory = await unzipper.Open.file(filePath);
         console.log('directory', directory);
@@ -147,26 +181,26 @@ async function unzipFile(filePath,outputPath,sourceType,unzipPassword,addFiles) 
         return new Promise( (resolve, reject) => {
         const fileStream = directory.files[0].stream(unzipPassword);
         // 监听解压流的错误事件,如密码错误
-        fileStream.on('error', async (err) => { // 这里加了async ???
-            console.log(chalk.white.bgRed(`解压失败    `) 
-            + chalk.white(`文件名:${decodedPath}  文件大小:${(directory.files[0]['compressedSize']/1024).toFixed(1)}KB`)
-            + chalk.white(`错误信息:${err}`))
-            reject(err);
-            await chooseTargetFile(addFiles)        
+        fileStream.on('error',(err) => { 
+            reject({
+                err,
+                fileSize:(directory.files[0]['compressedSize']/1024).toFixed(1),
+                fileName:decodedPath,
+                addFiles            
+            });
         });
         
         const writeStream = fs.createWriteStream(decodedPath);
         
         writeStream.on('error', (err) => {
-            console.log(chalk.white.bgRed(`写入文件失败    `) + chalk.white(`文件名:${decodedPath}  文件大小:${(directory.files[0]['compressedSize']/1024).toFixed(1)}KB`))        
+            console.log(chalk.white.bgRed(`写入文件失败`) + chalk.white(`    文件名:${decodedPath}  文件大小:${(directory.files[0]['compressedSize']/1024).toFixed(1)}KB`))        
             reject(err);
         });
     
         writeStream.on('finish', () => {
-            console.log(chalk.white.bgGreen(`解压成功    `) + chalk.white(`文件名:${decodedPath}  文件大小:${(directory.files[0]['uncompressedSize']/1024).toFixed(1)}KB`))        
             resolve({
                 fileSize:(directory.files[0]['uncompressedSize']/1024).toFixed(1),
-                fileName:decodedPath                
+                fileName:decodedPath             
             });
         });
     

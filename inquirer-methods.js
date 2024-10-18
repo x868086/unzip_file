@@ -1,7 +1,17 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
+import readline from 'readline';
 
+function clearScreen() {
+    // const rl = readline.createInterface({
+    //     input: process.stdin,
+    //     output: process.stdout
+    // });
 
+    // rl.output.write('\x1Bc'); // 发送 ANSI 清屏命令
+    // rl.close();
+    process.stdout.write('\u001b[2J\u001b[0;0H');
+}
 
 // 示例：提示用户输入密码
 async function askForPassword() {
@@ -29,6 +39,7 @@ async function askForPassword() {
 
 //显示当前加载文件的列表
 async function showLoadingFiles(addFiles){
+    clearScreen();
     if (addFiles.length === 0) {
         console.log(`${chalk.red.bold}(没有跟踪到任何文件,请重启程序:)`);
         return null;
@@ -59,6 +70,7 @@ async function showLoadingFiles(addFiles){
 
 // 确认界面
 async function confirmedFile(msg){
+    clearScreen()
     try {
         const answers = await inquirer.prompt([
             {
@@ -79,6 +91,7 @@ async function confirmedFile(msg){
 export {
     askForPassword,
     showLoadingFiles,
-    confirmedFile   
+    confirmedFile,
+    clearScreen   
 }
 
