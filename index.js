@@ -62,7 +62,7 @@ watcher.on('add', async filePath => {
             if (errorFileIndex > -1) {
                 addFiles.splice(errorFileIndex, 1);
             }
-            console.error(`新增文件不存在: ${error.message}`);
+            console.error(`新增文件不存在: ${error}`);
         }        
     },1500) //延迟1000ms，当有zip文件名修改时，等待删除原有文件后调用getLastModifiedFile遍历正确的addFiles
 });

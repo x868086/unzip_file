@@ -31,7 +31,8 @@ async function askForPassword() {
                 }                
             }
         ]);
-        return answers.zipPassword;        
+        // return answers.zipPassword;
+        return answers;
     } catch (error) {
         console.log('输入密码时发生错误:', error);
     }
@@ -39,15 +40,6 @@ async function askForPassword() {
 
 //显示当前加载文件的列表
 async function showLoadingFiles(addFiles){
-    clearScreen();
-    if (addFiles.length === 0) {
-        console.log(`${chalk.red.bold}(没有跟踪到任何文件,请重启程序:)`);
-        return null;
-    }
-    let showList = addFiles.map(e=>{
-        return e.filePath
-    })
-
     try {
         const answers = await inquirer.prompt([
             {
@@ -56,7 +48,7 @@ async function showLoadingFiles(addFiles){
             type: 'list',
             name: 'choice',
             message: '请选择一个.zip文件解压',
-            choices: showList
+            choices: addFiles
             }
         ])
         // return answers.topping;         
@@ -70,7 +62,6 @@ async function showLoadingFiles(addFiles){
 
 // 确认界面
 async function confirmedFile(msg){
-    clearScreen()
     try {
         const answers = await inquirer.prompt([
             {
@@ -79,12 +70,51 @@ async function confirmedFile(msg){
                 message: `${chalk.yellow(msg)}`
             }
         ])
-        return answers.confirmed;        
+        // return answers.confirmed;
+        return answers;        
     } catch (error) {
         console.error('确认时发生错误:', error);
     }
 
 }
+
+async function userInquirer(prompt) {
+    const answers = await inquirer.prompt(prompt);
+    return answers;
+}
+
+// const prompts = {
+//     askForPassword:[
+//         {
+//             type: 'input',
+//             name: 'zipPassword',
+//             message: chalk.yellow(`请输入解压密码: `),
+//             mask:null,
+//             validate: function (value) {
+//                 if (value.length) {
+//                     return true;
+//                 } else {
+//                     return '密码不能为空!';
+//                 }
+//             }                
+//         }
+//     ],
+//     showLoadingFiles:[
+//             {
+//             type: 'list',
+//             name: 'choice',
+//             message: '请选择一个.zip文件解压',
+//             choices: addFiles
+//             }        
+//     ],
+//     confirmedFile:[
+//         {
+//             type: 'confirm',
+//             name:'confirmed',
+//             message: `${chalk.yellow(msg)}`
+//         }        
+//     ]
+// }
 
 
 
@@ -92,6 +122,7 @@ export {
     askForPassword,
     showLoadingFiles,
     confirmedFile,
+    userInquirer,
     clearScreen   
 }
 

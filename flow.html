@@ -1,26 +1,41 @@
 <html>
-  <body>
-    <div id="diagram">Loading...</div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.1.0/raphael-min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/flowchart/1.15.0/flowchart.min.js"></script>
-    <script>
-     var chart;
-      var diagram = `
+
+<body>
+  <div id="diagram">Loading...</div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.1.0/raphael-min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/flowchart/1.15.0/flowchart.min.js"></script>
+  <script>
+    var chart;
+    var diagram = `
+      
       st=>start: Start
-      e=>end
-      op1=>operation: Op 1
-      op2=>operation: Op 2
-      cond=>condition: Easy to use?
-      st->op1->cond
-      cond(yes)->e
-      cond(no)->op2->e
+      e=>end: End
+
+      op1=>operation: 加载文件列表
+      op2=>operation: 解压缩
+      cond1=>condition: 需要密码
+      cond2=>condition: 确认解压
+      cond3=>condition: 解压成功
+      
+
+    st->cond1
+    cond1(no)->cond2
+    cond2(no)->op1
+    op1->cond1
+    cond1(yes)->op2
+    cond2(yes)->op2
+    op2->cond3
+    cond3(no)->op1
+    cond3(yes)->e
     `;
+
     window.onload = function () {
       var diagramContainer = document.getElementById('diagram');
       var diagramModel = flowchart.parse(diagram);
       diagramModel.drawSVG(diagramContainer);
       chart = diagramModel.getSVG();
     };
-    </script>
-  </body>
+  </script>
+</body>
+
 </html>
