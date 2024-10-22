@@ -65,5 +65,37 @@ fs.createReadStream('path/to/archive.zip')
 3. file.souceType: 这是源数据的编码类型。iconv.decode() 将会用这个编码读取 entry.props.pathBuffer。
 这条命令的作用，一般来说，就是将从 ZIP 文件中获取到的条目路径名（这个路径名被编码并存储在 Buffer 对象 entry.props.pathBuffer 中）从其原始编码 (file.souceType) 转换为 UTF-8 编码的字符串。
 例如，如果你从一个由 Windows 系统创建的 ZIP 文件中取出一个条目，该条目的路径可能被编码为 GBK。这样，你就可以使用 iconv.decode(entry.props.pathBuffer, 'gbk') 来得到正确显示的路径名。
+```
 
 
+
+***
+
+
+
+
+```mermaid
+graph TD
+A[开始]-->B{是否需要密码}
+--否-->C{是否确认解压}
+--否-->D[[加载列表]]--选择文件-->B
+
+B--是-->E{解压成功}--是-->F[完成]
+C--是-->E
+E--否-->D
+
+```
+
+*** 
+
+
+```flow
+   st=>start: 开始
+   op=>operation: 操作
+   cond=>condition: 确认？
+   e=>end: 结束
+
+   st->op->cond
+   cond(yes)->e
+   cond(no)->op
+```

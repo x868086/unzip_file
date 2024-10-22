@@ -1,0 +1,26 @@
+<html>
+  <body>
+    <div id="diagram">Loading...</div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.1.0/raphael-min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flowchart/1.15.0/flowchart.min.js"></script>
+    <script>
+     var chart;
+      var diagram = `
+      st=>start: Start
+      e=>end
+      op1=>operation: Op 1
+      op2=>operation: Op 2
+      cond=>condition: Easy to use?
+      st->op1->cond
+      cond(yes)->e
+      cond(no)->op2->e
+    `;
+    window.onload = function () {
+      var diagramContainer = document.getElementById('diagram');
+      var diagramModel = flowchart.parse(diagram);
+      diagramModel.drawSVG(diagramContainer);
+      chart = diagramModel.getSVG();
+    };
+    </script>
+  </body>
+</html>
