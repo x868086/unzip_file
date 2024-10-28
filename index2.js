@@ -1,188 +1,89 @@
+import path from "path";
+import fs from "fs/promises";
 
-import path from 'path';
-import unzipper  from 'unzipper';
-import fs from 'fs';
-import iconv from 'iconv-lite'
+// const directoryToWatch = path.join(process.cwd(), config.directoryToWatch);
+// const outputPath = path.join(process.cwd(), config.outputPath);
 
-
+const directoryToWatch = path.join(process.cwd());
 const outputPath = path.join(process.cwd());
 
-import { detectEncode } from './zipfile-methods.js';
+import chokidar from "chokidar";
+import chalk from "chalk";
 
-// let latestModifiedFile={
-//     filePath:'D:\\Project\\unzip_file\\新建 XLSX 工作表.xlsx',
-//     fileName:'新建 XLSX 工作表.xlsx'
-// }
+import config from "./config.js";
+import {
+  getFileInfo,
+  getLastModifiedFile,
+  needsPasswordUnzip,
+  controller
+} from "./zipfile-methods2.js";
+import { input2, showList2,showConfirm } from "./inquirer-methods2.js";
 
-let latestModifiedFile={
-    filePath:'C:\\Users\\Administrator\\Desktop\\export\\unzip_file\\TEMP_EXPORT_DETAIL-202410170928161613.zip',
-    fileName:'TEMP_EXPORT_DETAIL-202410170928161613.zip',
-    fileSizeInMB:'1.4MB',
-    birthtime:'2023-06-06T06:06:06.000Z',
-    birthtimeLocal:'2023-06-06 14:06:06',
-    needsPWD:true,
-    souceType:'GB18030'
-}
+let addFiles = []; // 维护当前目录下所有.zip文件的数组
+let latestModifiedFile = ""; //维护最新添加的文件
+let timerAdd = null; //维护新增文件定时器
+let isLoading = false; //维护首次读取频率，提高性能，还未实现？？？
 
-async function unzipFile2(latestModifiedFile) {
-    // 创建可读流
-    let souceType=await detectEncode(latestModifiedFile.filePath)
-    console.log(`编码格式为：${souceType}`)
-    
-
-
-    const readStream = fs.createReadStream(latestModifiedFile.filePath);
-
-    const sourceEncoding = (souceType.toLowerCase());
-
-    // // 创建一个解码流转换原始编码到UTF-8
-    const decodeStream = iconv.decodeStream(sourceEncoding);
-    const encodeStream = iconv.encodeStream('utf8');
-
-// 监听数据事件
-
-readStream
-.pipe(decodeStream)  // 解码到中间编码（通常是 UTF-8）
-.pipe(encodeStream)  // 重新编码回 UTF-8 (确保处理后是有效的 UTF-8 数据)
-
-readStream.on('data', (chunk) => {
-    console.log(chunk.toString());  // 此处的 chunk 将是正确编码的字符串
+// 初始化监视器，只关注 .zip 文件的变化
+const watcher = chokidar.watch(directoryToWatch, {
+  ignored: [
+    /(^|[\/\\])node_modules([\/\\]|$)/, // 忽略 node_modules 目录
+    /(^|[\/\\])szxc([\/\\]|$)/, // 忽略 service_project 目录
+    /(^|[\/\\])[^\/\\]*\.(?!zip)[^\/\\]*$/, // 忽略非.zip文件
+  ],
+  ignoreInitial: true, // 阻止监视器启动时触发 'add' 事件
+  persistent: true, // 使监视器持久运行
 });
 
-
-// 监听结束事件
-readStream.on('end', () => {
-console.log('读取完成');
-});
-
-// 监听错误事件
-readStream.on('error', (err) => {
-console.error('读取过程中发生错误:', err);
-});
-}
-
-
-//解压缩文件
-async function unzipFile(file, outputDir, password) {
-    return new Promise((resolve, reject) => {
-        // 创建可读流
-        const readStream = fs.createReadStream(file.filePath);
-
-        //创建解压流
-        const unzipStream = readStream.pipe(unzipper.Parse());
-
-
-        // 处理解压事件
-        unzipStream
-            .on('entry', (entry) => {
-                var isUnicode = entry.props.flags.isUnicode;
-                // Archives created by legacy tools usually have filenames encoded with IBM PC (Windows OEM) character set.
-                // You can decode filenames with preferred character set
-                var decodedPath = isUnicode ? entry.path : iconv.decode(entry.props.pathBuffer, file.souceType);
-
-                // 检查是否为文件
-                if (entry.type === 'File') {
-                    // 设置密码
-                    entry.password = password;
-                    // 获取输出路径
-                    const outputPath = path.join(outputDir, decodedPath);
-                    
-                    // 创建写入流
-                    const writeStream = fs.createWriteStream(outputPath);
-
-                    // 将数据写入文件
-                    entry.pipe(writeStream);
-
-                    // 监听写入完成事件
-                    writeStream.on('finish', () => {
-                        writeStream.close();
-                    });
-
-                    // 错误处理
-                    writeStream.on('error', (err) => {
-                        reject(err);
-                    });
-                }
-
-                // 移动到下一个条目
-                entry.autodrain();
-            })
-            .on('close', () => {
-                resolve();
-            })
-            .on('error', (err) => {
-                reject(err);
-            });
-    });
-}
-
-async function unzipFile3(latestModifiedFile) {
-
-    fs.createReadStream(latestModifiedFile.filePath)
-    .pipe(unzipper.Parse())
-    .on('entry', function (entry) {
-    // if some legacy zip tool follow ZIP spec then this flag will be set
-    const isUnicode = entry.props.flags.isUnicode;
-    // decode "non-unicode" filename from OEM Cyrillic character set
-    const fileName = isUnicode ? entry.path : iconv.decode(entry.props.pathBuffer, 'GB18030');
-    const type = entry.type; // 'Directory' or 'File'
-    const size = entry.vars.uncompressedSize; // There is also compressedSize;
-    // if (fileName === "Текстовый файл.txt") {
-    //     entry.pipe(fs.createWriteStream(fileName));
-    // } else {
-    //     entry.autodrain();
-    // }
-    if (entry.type === "File") {
-        entry.pipe(fs.createWriteStream(fileName));
-    } else {
-        entry.autodrain();
-    }
-    });
-}
-
-// 解压缩加密文件的方法
-async function unzipFile4(file) {
-        const directory = await unzipper.Open.file(file.filePath);
-        console.log('directory', directory);
-        var isUnicode = directory.files[0].isUnicode;
-        var decodedPath = isUnicode ? directory.files[0].path : iconv.decode(directory.files[0].pathBuffer, file.souceType);
-        return new Promise( (resolve, reject) => {
-        directory.files[0]
-            .stream('Mze3Rz')
-            .pipe(fs.createWriteStream(decodedPath))
-            .on('error',reject)
-            .on('finish',resolve)
-        });
-}
-
-// 解压缩非加密文件的方法
-async function unzipFile5(file) {
-    const directory = await unzipper.Open.file(file.filePath);
-    console.log('directory', directory);
-    var isUnicode = directory.files[0].isUnicode;
-    var decodedPath = isUnicode ? directory.files[0].path : iconv.decode(directory.files[0].pathBuffer, file.souceType);
-    return new Promise( (resolve, reject) => {
-    directory.files[0]
-        .stream()
-        .pipe(fs.createWriteStream(decodedPath))
-        .on('error',reject)
-        .on('finish',resolve)
-    });
-}
-
-
-
-
-
-(async () => {
+//添加文件新增事件处理器
+watcher.on("add", async (filePath) => {
+  timerAdd = setTimeout(async () => {
     try {
-        // await unzipFile(latestModifiedFile,outputPath,'a123')
-        // await unzipFile3(latestModifiedFile) //非加密的zip文件
-        await unzipFile4(latestModifiedFile) //可解压缩加密zip文件
-        // await unzipFile5(latestModifiedFile)
-
+        // controller.abort()
+      const fileInfo = await getFileInfo(filePath);
+      console.log(`新增 .zip 文件: ${filePath}`);
+      addFiles.push(fileInfo);
+      clearTimeout(timerAdd);
+      latestModifiedFile = await getLastModifiedFile(addFiles);
+      await needsPasswordUnzip(latestModifiedFile, addFiles);
     } catch (error) {
-        console.log(error)
+      // let errorFileIndex = addFiles.indexOf(error.path);
+      let errorFileIndex = addFiles.findIndex(
+        (fileInfo) => fileInfo.filePath === error.path
+      );
+      if (errorFileIndex > -1) {
+        addFiles.splice(errorFileIndex, 1);
+      }
+      console.error(`新增文件不存在: ${error}`);
     }
-})()
+  }, 1500); //延迟1000ms，当有zip文件名修改时，等待删除原有文件后调用getLastModifiedFile遍历正确的addFiles
+});
 
+//添加文件删除事件处理器
+watcher.on("unlink", async (filePath) => {
+  try {
+    console.log(`已移除 .zip 文件: ${filePath}`);
+    if (latestModifiedFile.filePath === filePath) {
+      latestModifiedFile = "";
+    }
+    // const index = addFiles.indexOf(filePath);
+    const index = addFiles.findIndex(
+      (fileInfo) => fileInfo.filePath === filePath
+    );
+    if (index > -1) {
+      addFiles.splice(index, 1);
+    }
+  } catch (error) {
+    console.error(`处理移除文件时出错: ${error}`);
+  }
+});
+
+// 添加错误事件处理器
+watcher.on("error", async (error) => {
+  console.error(`监视器错误: ${error}`);
+  // 在这里可以进行异步错误处理
+  // await someAsyncErrorHandlingFunction(error);
+  console.log(chalk.red(`请重启程序`));
+});
+
+console.log(`开始监控目录: ${directoryToWatch}`);
