@@ -6,7 +6,7 @@ import config from "./config.js";
 const outputPath = path.join(process.cwd(), config.outputPath);
 
 
-let fileName = 'test.csv'
+
 
 
 async function csvMethods(fileName) {
@@ -27,8 +27,11 @@ async function csvMethods(fileName) {
     .on('finish', () => console.log('done'))
 }
 
-csvMethods(fileName).catch(e=>console.log(e))
 
+
+export {
+    csvMethods
+}
 
 
 // .transform((row, next) => {
