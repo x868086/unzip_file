@@ -6,6 +6,7 @@ import path from "path";
 import fs from "fs";
 import { promises as fsPromises } from "fs";
 import chalk from "chalk";
+import ora from "ora";
 import iconv from "iconv-lite";
 
 import languageEncoding from "detect-file-encoding-and-language";
@@ -91,9 +92,9 @@ async function getLastModifiedFile(addFiles) {
   });
   addFiles.splice(config.fileListLength);
   console.log(
-    chalk.white(`最后新增的文件是: `) +
+    chalk.white(`最后新增的文件是: `) + `\n` +
       chalk.green(`${addFiles[0].fileName}`) +
-      `  ` +
+      `  ` + `\n` +
       `${
         addFiles[0].needsPWD ? chalk.yellow("已加密") : chalk.white("未加密")
       }` +
@@ -107,7 +108,7 @@ async function getLastModifiedFile(addFiles) {
       chalk.white(addFiles[0].fileSizeInMB) +
       `  ` +
       chalk.white(addFiles[0].birthtimeLocal) +
-      `  ` +
+      `  ` + `\n` +
       chalk.gray(`监测文件数量:${addFiles.length}`)
   );
   return addFiles[0];
@@ -270,6 +271,7 @@ async function unzipFile(
   unzipPassword,
   addFiles
 ) {
+  const spinner = ora('解压缩...').start();
   const directory = await unzipper.Open.file(filePath);
   // console.log('directory', directory);
   var isUnicode = directory.files[0].isUnicode;
@@ -280,15 +282,18 @@ async function unzipFile(
     const fileStream = directory.files[0].stream(unzipPassword);
     // 监听解压流的错误事件,如密码错误
     fileStream.on("error", (err) => {
-      console.log(
-        chalk.white.bgRed(`解压失败`) +
-          chalk.white(
-            `    文件名:${decodedPath}  文件大小:${(
-              directory.files[0]["compressedSize"] / 1024
-            ).toFixed(1)}KB`
-          ) +
-          chalk.white(`    错误信息:${err.message}`)
-      );
+      // console.log(
+      //   chalk.white.bgRed(`解压失败`) +
+      //     chalk.white(
+      //       `    文件名:${decodedPath}  文件大小:${(
+      //         directory.files[0]["compressedSize"] / 1024
+      //       ).toFixed(1)}KB`
+      //     ) +
+      //     chalk.white(`    错误信息:${err.message}`)
+      // );
+      spinner.fail(`${chalk.white.bgRed(`解压失败`)}  文件名: ${chalk.white(decodedPath)}    文件大小: ${chalk.white(
+        `${(directory.files[0]["compressedSize"] / 1024).toFixed(1)}KB`
+      )}`)
       reject({
         err: err.message,
         fileSize: (directory.files[0]["compressedSize"] / 1024).toFixed(1),
@@ -312,14 +317,17 @@ async function unzipFile(
     });
 
     writeStream.on("finish", () => {
-      console.log(
-        chalk.white.bgGreen(`解压成功`) +
-          chalk.white(
-            `    文件名:${decodedPath}  文件大小:${(
-              directory.files[0]["uncompressedSize"] / 1024
-            ).toFixed(1)}KB`
-          )
-      );
+      // console.log(
+      //   chalk.white.bgGreen(`解压成功`) +
+      //     chalk.white(
+      //       `    文件名:${decodedPath}  文件大小:${(
+      //         directory.files[0]["uncompressedSize"] / 1024
+      //       ).toFixed(1)}KB`
+      //     )
+      // );
+      spinner.succeed(`${chalk.bgGreen(`解压成功`)}  文件名: ${chalk.white(decodedPath)}    文件大小: ${chalk.white(
+        `${(directory.files[0]["uncompressedSize"] / 1024).toFixed(1)}KB`
+      )}`);
       resolve({
         fileSize: (directory.files[0]["uncompressedSize"] / 1024).toFixed(1),
         fileName: decodedPath

@@ -18,7 +18,7 @@ import {
 } from "./zipfile-methods.js";
 import { clearScreen } from "./inquirer-methods.js";
 
-import {csvMethods} from './csv-methods.js'
+import {csvTransform} from './csv-methods.js'
 
 let addFiles = []; // 维护当前目录下所有.zip文件的数组
 let latestModifiedFile = ""; //维护最新添加的文件
@@ -47,7 +47,10 @@ watcher.on("add", async (filePath) => {
       clearTimeout(timerAdd);
       latestModifiedFile = await getLastModifiedFile(addFiles);
       let {fileName} = await needsPasswordUnzip(latestModifiedFile, addFiles);
-      console.log(fileName)
+      // console.log(fileName)
+      let csvFilePath = path.join(process.cwd(),fileName);
+      let csvOutputPath = path.join(process.cwd(),`${fileName}.unzip.csv`);
+      await csvTransform(csvFilePath,csvOutputPath)
     } catch (error) {
       // let errorFileIndex = addFiles.indexOf(error.path);
       let errorFileIndex = addFiles.findIndex(
