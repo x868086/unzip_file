@@ -129,23 +129,35 @@ async function isConfirmed(latestModifiedFile, addFiles) {
   let { confirmed } = await answers;
 
   if (confirmed) {
-    unzipFile(
+  // unzipFile(
+  //     latestModifiedFile.filePath,
+  //     outputPath,
+  //     latestModifiedFile.sourceType,
+  //     null,
+  //     addFiles
+  //   )
+  //     .then(({ fileSize, fileName,filePath }) => {
+  //       deleteFromAddList(latestModifiedFile.filePath, addFiles);
+  //       // resolve({fileSize, fileName,filePath}) 
+  //       return {fileSize, fileName,filePath}
+  //     })
+  //     .catch(async (e) => {
+  //       await chooseTargetFile(addFiles);
+  //     });
+    let { fileSize, fileName } = await unzipFile(
       latestModifiedFile.filePath,
       outputPath,
       latestModifiedFile.sourceType,
       null,
       addFiles
-    )
-      .then(({ fileSize, fileName }) => {
-        deleteFromAddList(latestModifiedFile.filePath, addFiles);
-      })
-      .catch(async (e) => {
-        await chooseTargetFile(addFiles);
-      });
+    );
+    deleteFromAddList(latestModifiedFile.filePath, addFiles);
+    return {fileSize, fileName}
   } else {
     // let targetFile = await chooseTargetFile(addFiles)
     // await needsPasswordUnzip(targetFile,addFiles)
-    await chooseTargetFile(addFiles);
+    let {fileSize, fileName} = await chooseTargetFile(addFiles);
+    return {fileSize, fileName}
   }
 }
 //确认解压缩文件是否需要密码
@@ -180,6 +192,7 @@ async function needsPasswordUnzip(latestModifiedFile, addFiles) {
         addFiles
       );
       deleteFromAddList(latestModifiedFile.filePath, addFiles);
+      return {fileSize, fileName}
       // 以下写法是promise的用法，上面是promise async await的用法
       // unzipFile(latestModifiedFile.filePath,outputPath,latestModifiedFile.sourceType, zipPassword,addFiles)
       // .then(({fileSize,fileName})=>{
@@ -194,11 +207,13 @@ async function needsPasswordUnzip(latestModifiedFile, addFiles) {
       //     await chooseTargetFile(addFiles)
       // })
     } else {
-      await isConfirmed(latestModifiedFile, addFiles);
+      let {fileSize, fileName} = await isConfirmed(latestModifiedFile, addFiles);
+      return {fileSize, fileName}
     }
   } catch (error) {
     // console.log(error)
-    await chooseTargetFile(addFiles);
+    let {fileSize,fileName} = await chooseTargetFile(addFiles);
+    return {fileSize,fileName}
   }
 }
 
@@ -228,7 +243,8 @@ async function chooseTargetFile(addFiles) {
     (fileInfo) => fileInfo.filePath === targetFile.choice
   );
   if (chooseIndex > -1) {
-    await needsPasswordUnzip(addFiles[chooseIndex], addFiles);
+    let {fileSize,fileName} = await needsPasswordUnzip(addFiles[chooseIndex], addFiles);
+    return {fileSize,fileName}
   }
 }
 
@@ -277,7 +293,7 @@ async function unzipFile(
         err: err.message,
         fileSize: (directory.files[0]["compressedSize"] / 1024).toFixed(1),
         fileName: decodedPath,
-        addFiles: addFiles,
+        addFiles: addFiles
       });
     });
 
@@ -306,7 +322,7 @@ async function unzipFile(
       );
       resolve({
         fileSize: (directory.files[0]["uncompressedSize"] / 1024).toFixed(1),
-        fileName: decodedPath,
+        fileName: decodedPath
       });
     });
 
