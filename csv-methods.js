@@ -31,7 +31,8 @@ return result;
 async function csvTransform(filePath,outputPath) {
     const readStream = createReadStream(filePath);
     const writeStream = createWriteStream(outputPath);
-    let rowCount=0;
+    let rowCount = 0;
+    let badCharCount = 0;
     const spinner = ora('解析CSV...').start();
 
     fastCsv
@@ -41,7 +42,11 @@ async function csvTransform(filePath,outputPath) {
         setImmediate(() => {
             // console.log(data)
             // console.log(`当前处理第${rowCount}行`)
-            const processedObj = processValues(data, value => value.replace(/[\x00-\x1F\x7F-\x9F]/g, ''));
+            const processedObj = processValues(data, value => {
+                var badCharLen = value.match(/[\x1C-\x1F]/g) ? value.match(/[\x1C-\x1F]/g).length:0;
+                badCharCount += badCharLen
+                value.replace(/[\x00-\x1F\x7F-\x9F]/g, '')
+            });
             // cb(null, {...data})
             // console.log(processedObj)
             cb(null,{...processedObj})
@@ -60,7 +65,7 @@ async function csvTransform(filePath,outputPath) {
     .pipe(writeStream)
     .on('finish', async () => {
         // spinner.succeed(`文件写入完成  总计:${rowCount}行  路径:${outputPath}`);
-        spinner.succeed(`${chalk.bgGreen(`转存成功`)}  总计 ${chalk.green(rowCount)} 行    路径 ${outputPath}`);
+        spinner.succeed(`${chalk.bgGreen(`转存成功`)}  总计 ${chalk.green(rowCount)} 行  badChar ${chalk.yellow(badCharCount)}    路径 ${outputPath}`);
         await deleteCSVFile(filePath)
         // console.log(`文件写入完成, 总计${rowCount}行`)
     })
