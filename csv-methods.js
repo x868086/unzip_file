@@ -45,7 +45,7 @@ async function csvTransform(filePath,outputPath) {
             const processedObj = processValues(data, value => {
                 var badCharLen = value.match(/[\x1C-\x1F]/g) ? value.match(/[\x1C-\x1F]/g).length:0;
                 badCharCount += badCharLen
-                value.replace(/[\x00-\x1F\x7F-\x9F]/g, '')
+                return value.replace(/[\x00-\x1F\x7F-\x9F]/g, '')
             });
             // cb(null, {...data})
             // console.log(processedObj)
